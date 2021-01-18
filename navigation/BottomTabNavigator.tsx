@@ -5,9 +5,11 @@ import * as React from 'react';
 
 import Colors from '../constants/Colors';
 import useColorScheme from '../hooks/useColorScheme';
-import TabOneScreen from '../screens/TabOneScreen';
-import TabTwoScreen from '../screens/TabTwoScreen';
-import { BottomTabParamList, TabOneParamList, TabTwoParamList } from '../types';
+import WelcomeScreen from '../screens/WelcomeScreen';
+import {ScheduleScreen} from '../screens/ShceduleScreen';
+import {TimerScreen} from '../screens/TimerScreen';
+
+import { BottomTabParamList, WelcomeParamList, ScheduleParamList, TimerParamList } from '../types';
 
 const BottomTab = createBottomTabNavigator<BottomTabParamList>();
 
@@ -16,20 +18,27 @@ export default function BottomTabNavigator() {
 
   return (
     <BottomTab.Navigator
-      initialRouteName="TabOne"
+      initialRouteName="Welcome"
       tabBarOptions={{ activeTintColor: Colors[colorScheme].tint }}>
       <BottomTab.Screen
-        name="TabOne"
-        component={TabOneNavigator}
+        name="Welcome"
+        component={WelcomeScreen}
         options={{
-          tabBarIcon: ({ color }) => <TabBarIcon name="ios-code" color={color} />,
+          tabBarIcon: ({ color }) => <TabBarIcon name="human-greeting" color={color} />,
         }}
       />
       <BottomTab.Screen
-        name="TabTwo"
-        component={TabTwoNavigator}
+        name="Schedule"
+        component={ScheduleScreen}
         options={{
-          tabBarIcon: ({ color }) => <TabBarIcon name="ios-code" color={color} />,
+          tabBarIcon: ({ color }) => <TabBarIcon name="ios-information-circle" color={color} />,
+        }}
+      />
+      <BottomTab.Screen
+        name="Timer"
+        component={TimerScreen}
+        options={{
+          tabBarIcon: ({ color }) => <TabBarIcon name="alarm" color={color} />,
         }}
       />
     </BottomTab.Navigator>
@@ -44,30 +53,44 @@ function TabBarIcon(props: { name: string; color: string }) {
 
 // Each tab has its own navigation stack, you can read more about this pattern here:
 // https://reactnavigation.org/docs/tab-based-navigation#a-stack-navigator-for-each-tab
-const TabOneStack = createStackNavigator<TabOneParamList>();
+const WelcomeStack = createStackNavigator<WelcomeParamList>();
 
-function TabOneNavigator() {
+function WelcomeNavigator() {
   return (
-    <TabOneStack.Navigator>
-      <TabOneStack.Screen
-        name="TabOneScreen"
-        component={TabOneScreen}
-        options={{ headerTitle: 'Tab One Title' }}
+    <WelcomeStack.Navigator>
+      <WelcomeStack.Screen
+        name="WelcomeScreen"
+        component={WelcomeScreen}
+        options={{ headerTitle: 'Welcome' }}
       />
-    </TabOneStack.Navigator>
+    </WelcomeStack.Navigator>
   );
 }
 
-const TabTwoStack = createStackNavigator<TabTwoParamList>();
+const ScheduleStack = createStackNavigator<ScheduleParamList>();
 
-function TabTwoNavigator() {
+function ScheduleNavigator() {
   return (
-    <TabTwoStack.Navigator>
-      <TabTwoStack.Screen
-        name="TabTwoScreen"
-        component={TabTwoScreen}
-        options={{ headerTitle: 'Tab Two Title' }}
+    <ScheduleStack.Navigator>
+      <ScheduleStack.Screen
+        name="ScheduleScreen"
+        component={ScheduleScreen}
+        options={{ headerTitle: 'Schedule' }}
       />
-    </TabTwoStack.Navigator>
+    </ScheduleStack.Navigator>
+  );
+}
+
+const TimerStack = createStackNavigator<TimerParamList>();
+
+function TimerNavigator() {
+  return (
+    <TimerStack.Navigator>
+      <TimerStack.Screen
+        name="TimerScreen"
+        component={TimerScreen}
+        options={{ headerTitle: 'Timer' }}
+      />
+    </TimerStack.Navigator>
   );
 }
