@@ -16,7 +16,7 @@
   "timerScreen": {
     "appName": "Bell Scheduler",
     "title": "Next Bell",
-    "tagLine": "You next class start in 25mins.  The pack will howl when it is time for you to pay attention",
+    "tagLine": "You next class start in 25mins.  The pack will remind you when it is time for you to pay attention",
     "reactotron": "Demo Reactotron",
     "mute": "Mute the Pack",
     "androidReactotronHint": "If this doesn't work, ensure the Reactotron desktop app is running, run adb reverse tcp:9090 tcp:9090 from your terminal, and reload the app.",

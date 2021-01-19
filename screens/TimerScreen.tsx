@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import * as Calendar from 'expo-calendar';
+import React, { useState, useEffect, useRef, Component } from 'react';
+import Constants from 'expo-constants';
+import * as Permissions from "expo-permissions";
+import * as Notifications from 'expo-notifications';
+import * as SecureStore from 'expo-secure-store';
 import {Audio} from 'expo-av';
+import * as Speech from 'expo-speech';
 
 import { Image, ImageStyle, TextStyle, Vibration, View, ViewStyle } from "react-native"
+import CheckBox from '@react-native-community/checkbox';
 import { observer } from "mobx-react-lite"
 import { BulletItem, Button, Header, Text, Screen, Wallpaper } from "../components"
 import { color, spacing } from "../theme"
@@ -73,29 +78,28 @@ const HEART: ImageStyle = {
   resizeMode: "contain",
 }
 
-async function getDefaultCalendarSource() {
-  const calendars = await Calendar.getCalendarsAsync();
-  const defaultCalendars = calendars.filter(each => each.source.name === 'Default');
-  return defaultCalendars[0].source;
+const ALARM_SETTINGS_CONTAINER: ViewStyle = {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
 }
 
-async function createCalendar() {
-  const defaultCalendarSource =
-    Platform.OS === 'ios'
-      ? await getDefaultCalendarSource()
-      : { isLocalAccount: true, name: 'Expo Calendar' };
-  const newCalendarID = await Calendar.createCalendarAsync({
-    title: 'Expo Calendar',
-    color: 'blue',
-    entityType: Calendar.EntityTypes.EVENT,
-    sourceId: defaultCalendarSource.id,
-    source: defaultCalendarSource,
-    name: 'internalCalendarName',
-    ownerAccount: 'personal',
-    accessLevel: Calendar.CalendarAccessLevel.OWNER,
-  });
-  console.log(`Your new calendar ID is: ${newCalendarID}`);
+const CHECKBOX_CONTAINER: ViewStyle = {
+  flexDirection: "row",
+  marginBottom: 20,
 }
+
+const CHECKBOX_STYLE: ViewStyle =  {
+  alignSelf: "center"
+}
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export const TimerScreen = observer(function TimerScreen() {
 
@@ -112,29 +116,35 @@ export const TimerScreen = observer(function TimerScreen() {
       ? "wait 1s, vibrate 2s, wait 3s"
       : "wait 1s, vibrate, wait 2s, vibrate, wait 3s";
 
+  const [expoPushToken, setExpoPushToken] = useState('');
+  const [notification, setNotification] = useState();
+  const notificationListener = useRef();
+  const responseListener = useRef();
   const [sound, setSound] = React.useState();
+  const [vibrate, setVibrate] = React.useState();
+  const [howl, setHowl] = React.useState();
+
   useEffect(() => {
-    (async () => {
-      const { status } = await Calendar.requestCalendarPermissionsAsync();
-      if (status === 'granted') {
-        const calendars = await Calendar.getCalendarsAsync();
-        console.log('Here are all your calendars:');
-        console.log({ calendars });
-      }
-    })();
+
+    schedulePushNotification();
+
+    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      setNotification(notification);
+      console.log(notification);
+      console.log('Received');
+      playSound();
+    });
+
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Received notification');
+      console.log(response);
+    });
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
   }, []);
-
-  async function playSound() {
-    Vibration.vibrate(10 * ONE_SECOND_IN_MS);
-    console.log('Loading Sound');
-    const { sound } = await Audio.Sound.createAsync(
-       require('../assets/audio/wolf8.mp3')
-    );
-    setSound(sound);
-
-    console.log('Playing Sound');
-    await sound.playAsync();
-  }
 
   React.useEffect(() => {
     return sound
@@ -144,9 +154,55 @@ export const TimerScreen = observer(function TimerScreen() {
       : undefined;
   }, [sound]);
 
+  React.useEffect(() => {
+    try {
+      const settings = {howl, vibrate};
+      SecureStore.setItemAsync('pack-settings',JSON.stringify(settings));
+      console.log('Update the settings in store');
+    } catch (e) {
+      console.log(e);
+    }
+  }, [howl]);
+
+  React.useEffect(() => {
+    try {
+      const settings = {howl, vibrate};
+      SecureStore.setItemAsync('pack-settings',JSON.stringify(settings));
+      console.log('Update the settings in store');
+    } catch (e) {
+      console.log(e);
+    }
+  }, [vibrate]);
+
+  function speak() {
+    var thingToSay = 'Almost time for class';
+    Speech.speak(thingToSay);
+  }
+
+  async function playSound() {
+    let myJson;
+    const settings  = await SecureStore.getItemAsync('pack-settings');
+    console.log('value of settings: ', settings);
+      if (settings) {
+        myJson = JSON.parse(settings);
+        if(myJson.vibrate) {
+          Vibration.vibrate(10 * ONE_SECOND_IN_MS);
+        }
+        if (myJson.howl) {
+          console.log('Loading Sound');
+          const { sound } = await Audio.Sound.createAsync(
+            require('../assets/audio/wolf8.mp3')
+          );
+          setSound(sound);
+          console.log('Playing Sound');
+          await sound.playAsync();
+        }
+      }
+    speak();
+  }
+
   return (
     <View testID="TimerScreen" style={FULL}>
-
       <Wallpaper />
       <Screen style={CONTAINER} preset="scroll" backgroundColor={color.transparent}>
         <Header
@@ -157,18 +213,25 @@ export const TimerScreen = observer(function TimerScreen() {
         />
         <Text style={TITLE} preset="header" tx="timerScreen.title" />
         <Text style={TAGLINE} tx="timerScreen.tagLine" />
-        <BulletItem text="Period : 0" />
-        <BulletItem text="Period : 1" />
-        <BulletItem text="Period : 2" />
-        <BulletItem text="Period : 3" />
-        <View>
-          <Button
-            style={TIMER}
-            textStyle={TIMER_TEXT}
-            tx="timerScreen.mute"
-            onPress = {playSound}
-          />
+        <View style={ALARM_SETTINGS_CONTAINER}>
+          <View style={CHECKBOX_CONTAINER}>
+            <CheckBox
+              value={vibrate}
+              onValueChange={setVibrate}
+              style={CHECKBOX_STYLE}
+            />
+            <Text style={TAGLINE}>Vibrate?</Text>
+            <CheckBox
+              value={howl}
+              onValueChange={setHowl}
+              style={CHECKBOX_STYLE}
+            />
+            <Text style={TAGLINE}>Howl?</Text>
+          </View>
         </View>
+        <BulletItem text="Period : 1 (Starts 07:30)" />
+        <BulletItem text="Period : 2 (Starts 09:10)" />
+        <BulletItem text="Period : 3 (Starts 10:55)" />
         <Image source={logoRedTeam} style={REDTEAM} />
         <View style={LOVE_WRAPPER}>
           <Text style={LOVE} text="Made with" />
@@ -180,7 +243,88 @@ export const TimerScreen = observer(function TimerScreen() {
         <View style={LOVE_WRAPPER}>
           <Text style={LOVE} text="(GOHS Red Team)"/>
         </View>
+        <View>
+          <Button
+            style={TIMER}
+            textStyle={TIMER_TEXT}
+            tx="timerScreen.mute"
+          />
+        </View>
       </Screen>
     </View>
   )
 })
+
+async function schedulePushNotification() {
+  // If Tues-Friday
+  // 0730
+  // 0910
+  // 1055
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Bell Reminder",
+      body: 'Class is about to begin',
+      data: { data: 'Period 1, start time 07:30' },
+    },
+    trigger: {
+      hour: 7,
+      minute: 25,
+      repeats: true
+    }
+  });
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Bell Reminder",
+      body: 'Class is about to begin',
+      data: { data: 'Period 2, start time 07:30' },
+    },
+    trigger: {
+      hour: 9,
+      minute: 5,
+      repeats: true
+    }
+  });
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Bell Reminder",
+      body: 'Class is about to begin',
+      data: { data: 'Period 2, start time 07:30' },
+    },
+    trigger: {
+      hour: 10,
+      minute: 55,
+      repeats: true
+    }
+  });
+}
+
+async function registerForPushNotificationsAsync() {
+  let token;
+  if (Constants.isDevice) {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') {
+      alert('Failed to get push token for push notification!');
+      return;
+    }
+    token = (await Notifications.getExpoPushTokenAsync()).data;
+    console.log(token);
+  } else {
+    alert('Must use physical device for Push Notifications');
+  }
+
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+    });
+  }
+
+  return token;
+}
