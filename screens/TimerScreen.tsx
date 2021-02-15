@@ -120,12 +120,16 @@ export const TimerScreen = observer(function TimerScreen() {
   const [notification, setNotification] = useState();
   const notificationListener = useRef();
   const responseListener = useRef();
+  const intervalRef = useRef();
   const [sound, setSound] = React.useState();
   const [vibrate, setVibrate] = React.useState();
   const [howl, setHowl] = React.useState();
+  const [seconds, setSeconds] = React.useState('');
+
 
   useEffect(() => {
 
+    let interval = null;
     schedulePushNotification();
 
     registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
@@ -140,9 +144,37 @@ export const TimerScreen = observer(function TimerScreen() {
       console.log('Received notification');
       console.log(response);
     });
+
+    interval = setInterval(() => {
+      const now = new Date();
+      const first_class = new Date();
+      const second_class = new Date()
+      const third_class = new Date()
+
+      first_class.setHours(7, 55);
+      second_class.setHours(9,10);
+      third_class.setHours(10,55);
+
+      let diff_time = now - first_class;
+      const new_date = now.getDate();
+
+      if(now.getTime() > first_class.getTime() && now.getTime() < second_class.getTime()) {
+        diff_time = second_class - now;
+      }
+      else if (now.getTime() > second_class.getTime() && now.getTime() < third_class.getTime()) {
+        diff_time = third_class - now;
+      }
+      else if (now.getTime() > third_class.getTime()) {
+        first_class.setDate(new_date+1)
+        diff_time = first_class - now;
+      }
+      setSeconds(seconds => (diff_time/1000).toString().toHHMMSS());
+    }, 1000);
+
     return () => {
       Notifications.removeNotificationSubscription(notificationListener);
       Notifications.removeNotificationSubscription(responseListener);
+      clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -179,6 +211,18 @@ export const TimerScreen = observer(function TimerScreen() {
     Speech.speak(thingToSay);
   }
 
+  String.prototype.toHHMMSS = function () {
+    var sec_num = parseInt(this, 10); // don't forget the second param
+    var hours   = Math.floor(sec_num / 3600);
+    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+    if (hours   < 10) {hours   = "0"+hours;}
+    if (minutes < 10) {minutes = "0"+minutes;}
+    if (seconds < 10) {seconds = "0"+seconds;}
+    return hours+':'+minutes+':'+seconds;
+  }
+
   async function playSound() {
     let myJson;
     const settings  = await SecureStore.getItemAsync('pack-settings');
@@ -213,6 +257,7 @@ export const TimerScreen = observer(function TimerScreen() {
         />
         <Text style={TITLE} preset="header" tx="timerScreen.title" />
         <Text style={TAGLINE} tx="timerScreen.tagLine" />
+        <Text style={TITLE}>{seconds}</Text>
         <View style={ALARM_SETTINGS_CONTAINER}>
           <View style={CHECKBOX_CONTAINER}>
             <CheckBox
@@ -248,6 +293,7 @@ export const TimerScreen = observer(function TimerScreen() {
             style={TIMER}
             textStyle={TIMER_TEXT}
             tx="timerScreen.mute"
+            onPress={playSound}
           />
         </View>
       </Screen>
